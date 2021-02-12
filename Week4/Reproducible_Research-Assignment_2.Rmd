@@ -1,0 +1,41 @@
+---
+title: "Case Study"
+author: "Carlos Sanchez"
+date: "2/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r set_directory, message=F}
+setwd("C:/Users/carlo/Documents/R courses/5_Reproducible_Research/Week4")
+library(ggplot2)
+library(dplyr)
+```
+
+
+```{r data_loading, cache=TRUE}
+zipFile <- "StormData.bz2"
+
+if(!file.exists(zipFile)){
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(fileUrl, destfile = "StormData.bz2")
+}
+
+StormData <- read.csv("StormData.bz2")  
+
+```
+
+
+```{r, cache=T}
+test <- StormData %>% group_by(EVTYPE) %>% summarise(TotalFatalities = sum(FATALITIES), TotalInjuries = sum(INJURIES)) %>% arrange(desc(TotalFatalities))
+test <- subset(test, TotalFatalities>100 | TotalInjuries > 1000) 
+
+  ggplot(test) +
+  geom_point(aes(reorder(EVTYPE, -TotalFatalities), log(TotalFatalities)), color = "red") +
+    geom_point(aes(EVTYPE, log(TotalInjuries)), color = "blue") +
+    theme()
+```
+
