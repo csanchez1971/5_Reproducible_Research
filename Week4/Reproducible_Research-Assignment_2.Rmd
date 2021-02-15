@@ -1,19 +1,40 @@
 ---
-title: "Case Study"
+title: 'Major Wheater Events in the US: Period 1950 - 2011'
 author: "Carlos Sanchez"
-date: "2/12/2021"
-output: html_document
+date: "15 February 2021"
+output:
+  html_document: default
+  pdf_document: default
+subtitle: 'Peer-graded Assignment: Course Project 2'
 ---
+
+
+# Synopsis
+
+The following study analyzes data from the [U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database](https://www.ncdc.noaa.gov/stormevents/) from different points of view. This database includes information about:
+
+a. Storms and other significant weather phenomena that have provoked injuries or fatalities to people and crop or property damages
+b. Rare weather phenomena
+c. Other meteorological events that occur combined with another event
+
+The current study includes the data collected between the years 1950 and 2011. Data from last years are more complete and of better quality.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r set_directory, message=F}
+```{r set_directory, message=F, include=FALSE}
 setwd("C:/Users/carlo/Documents/R courses/5_Reproducible_Research/Week4")
 library(ggplot2)
 library(dplyr)
+library(knitr)
+
 ```
+
+
+# Data Processing
+
+First we load the data from the internet source:
 
 
 ```{r data_loading, cache=TRUE}
@@ -29,13 +50,102 @@ StormData <- read.csv("StormData.bz2")
 ```
 
 
-```{r, cache=T}
-test <- StormData %>% group_by(EVTYPE) %>% summarise(TotalFatalities = sum(FATALITIES), TotalInjuries = sum(INJURIES)) %>% arrange(desc(TotalFatalities))
-test <- subset(test, TotalFatalities>100 | TotalInjuries > 1000) 
+Once loaded, we analyze the dataset dimensions and the different variables we have. We can see that we have `r nrow(StormData)` rows and  `r ncol(StormData)` variables. We can also see the first rows of the dataset:
 
-  ggplot(test) +
-  geom_point(aes(reorder(EVTYPE, -TotalFatalities), log(TotalFatalities)), color = "red") +
-    geom_point(aes(EVTYPE, log(TotalInjuries)), color = "blue") +
-    theme()
+
+```{r}
+dim(StormData)
+head(StormData)
 ```
+
+
+# Results
+
+### Across the United States, which types of events (as indicated in the `EVTYPE` variable) are most harmful with respect to population health?
+
+To answer this question, we will group the data by `EVTYPE` variables and will summarize the total number of Fatalities and Injuries that each event has caused.
+
+```{r, cache=T}
+StormData_death_injured <- StormData %>% group_by(EVTYPE) %>% summarise(TotalFatalities = sum(FATALITIES), TotalInjuries = sum(INJURIES)) %>% arrange(desc(TotalFatalities))
+
+colors <- c("Total Injuries" = "blue", "Total Fatalities" = "red")
+```
+
+
+For clarity purposes, we will plot the 10 most harmful events in decreasing order of fatalities. We can see the two series, <span style="color:red">Total Fatalities</span> in red and <span style="color:blue">Total Injuries</span> in blue.
+
+
+```{r Total_Fatalities}
+   ggplot(head(StormData_death_injured, 10)) +
+  geom_point(aes(reorder(EVTYPE, -TotalFatalities), TotalFatalities, color = "Total Fatalities")) +
+    geom_point(aes(EVTYPE, TotalInjuries, color = "Total Injuries")) +
+    theme(axis.text.x = element_text(angle= 45, vjust = 1, hjust = 1, size = 6),
+          legend.position = "right") +
+    labs(x = "Event Type",
+         y = "Total Events",
+         title = "Total Fatalities and Injuries by Event",
+         color = "") +
+    scale_color_manual(values = colors) 
+
+```
+
+If we display the top 10 Events in total Fatalities and Injuries in a table, we can confirm what the plot was showing that Tornado and Excessive Heat are the most important causes of Fatalities and Tornado, TSTM Wind, Flood and Excessive Heat for Injuries:
+
+
+```{r}
+knitr::kable(head(StormData_death_injured, 10), caption = "Table of Top 10 most harmful events (Fatalities and Injuries)")
+```
+
+
+### Across the United States, which types of events have the greatest economic consequences?
+
+One data conversion that needs to be done before analyzing the events that caused the greatest economic losses, is the conversion of the different values into numeric. For both measures (Property and Crop), we have the values split into two columns, one first that contains the numeric value and a second that indicate the scale (hundreds, thousands, millions, billions), so we need to first convert this letter into a numeric value and multiply by the quantity on `PROPDMG` or `CROPDMG`. Values with symbols or numbers are being converted into 1.
+
+On a second step, we add the total values of Property and Crop damages by row and summarize and classify in descending order the data by Event type.
+
+
+```{r, cache=T, message=F}
+
+convert_letters <- function(x){ifelse(toupper(x)=="H", 100,
+                                   ifelse(toupper(x)=="K", 1000,
+                                          ifelse(toupper(x)=="M", 1e6,
+                                                 ifelse(toupper(x)=="B", 1e9, 1))))}
+
+StormData$PROPDMGEXP_num <- convert_letters(StormData$PROPDMGEXP)
+StormData$CROPDMGEXP_num <- convert_letters(StormData$CROPDMGEXP)
+
+StormData_Property_Damage <- StormData %>% 
+  filter(PROPDMG>0 | CROPDMG>0) %>%  
+  select(BGN_DATE, EVTYPE, PROPDMG, PROPDMGEXP_num, CROPDMG, CROPDMGEXP_num) %>% 
+  group_by(EVTYPE) %>% 
+  mutate(Total_Damage = PROPDMG*PROPDMGEXP_num + CROPDMG*CROPDMGEXP_num) %>% 
+  summarise(Total_Damage = sum(Total_Damage)) %>% 
+  arrange(desc(Total_Damage))
+```
+
+
+If we represent the data into a plot, we observe that Flood, Hurricane/Typhoon and Tornado are the 3 most important causes of damages:
+
+```{r Total_Damage}
+
+  ggplot(head(StormData_Property_Damage, 10)) +
+   geom_col(aes(reorder(EVTYPE, -Total_Damage), Total_Damage, fill = Total_Damage)) +
+    theme(axis.text.x = element_text(angle= 45, vjust = 1, hjust = 1, size = 6),
+          legend.position = "right") +
+    labs(x = "Event Type",
+         y = "Total Damage",
+         title = "Total Damage of Crop and Property by Cause") 
+```
+
+
+
+If we display again the top 10 Events of total Damages in a table, we can confirm the previous data:
+
+
+```{r}
+knitr::kable(head(StormData_Property_Damage, 10), caption = "Table of Top 10 events by damage (Property and Crop)")
+```
+
+
+
 

@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/726025/40d00cce809f43c480ba52973b9d5036
+bundleId: https://api.rpubs.com/api/v1/document/726025/40d00cce809f43c480ba52973b9d5036
+url: http://rpubs.com/csanchez1971/726025/edit
+when: 1613398090.20059
